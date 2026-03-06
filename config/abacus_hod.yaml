@@ -1,8 +1,7 @@
 # abacus_hod.yaml
 # ----------------
-# Configuration file for HOD mock generation with AbacusSummit.
-# WARNING: yaml is whitespace-sensitive — do not use tabs.
-#
+
+
 # Sections:
 #   sim_params             -> simulation name, directories, redshift
 #   prepare_sim            -> halo loading options
