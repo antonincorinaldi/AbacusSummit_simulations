@@ -1,0 +1,187 @@
+# abacus_hod.yaml
+# ----------------
+# Configuration file for HOD mock generation with AbacusSummit.
+# WARNING: yaml is whitespace-sensitive — do not use tabs.
+#
+# Sections:
+#   sim_params             -> simulation name, directories, redshift
+#   prepare_sim            -> halo loading options
+#   HOD_params             -> HOD model parameters per tracer (LRG, ELG, QSO)
+#   clustering_params      -> bins for the correlation function
+#   data_params            -> observational data paths (for MCMC fitting)
+#   fit_params             -> free parameters for emcee MCMC fitting
+#   ch_config_params       -> emcee configuration
+#   dynesty_fit_params     -> free parameters for dynesty nested sampling
+#   dynesty_config_params  -> dynesty configuration
+
+
+# ===========================================================================
+# Simulation parameters
+# ===========================================================================
+sim_params:
+    sim_name: 'AbacusSummit_base_c000_ph000'   # Simulation box name
+    sim_dir: /n17data/corinaldi/halos/          # Directory containing halo catalogs (adapt to your system)
+    output_dir: '/n17data/corinaldi/halos/Abacus_HOD/'      # Output directory for mock catalogs
+    subsample_dir: '/n17data/corinaldi/halos/Abacus_HOD/'   # Output directory for particle subsamples
+    z_mock: 0.8                                 # Redshift of the simulated snapshot
+    cleaned_halos: False                        # Use cleaned halo catalogs?
+
+
+# ===========================================================================
+# Halo loading options
+# ===========================================================================
+prepare_sim:
+    Nparallel_load: 1       # Number of parallel processes (peak memory scales with this)
+    Nthread_per_load: 1     # Number of threads per process
+
+
+# ===========================================================================
+# HOD parameters
+# ===========================================================================
+HOD_params:
+    want_ranks: False           # Enable satellite profile flexibility (ranking)?
+    want_AB: True               # Enable assembly bias (AB)?
+    density_sigma: 3            # Local density smoothing scale in Mpc/h
+
+    tracer_flags:               # Which tracers to generate
+        LRG: True
+        ELG: False
+        QSO: False
+
+    want_rsd: True              # Apply Redshift Space Distortions (RSD)?
+    write_to_disk: False        # Let AbacusHOD write output internally? (handled manually here)
+
+    # --- LRG (Luminous Red Galaxies) HOD parameters ---
+    # Based on Zheng+2007 with assembly bias extensions
+    LRG_params:
+        logM_cut: 12.78   # Log minimum halo mass for a central galaxy (M_sun/h)
+        logM1: 13.94      # Log characteristic mass for satellites
+        sigma: 0.23       # Width of the central occupation transition (in log M)
+        alpha: 1.07       # Power-law slope of the satellite mean occupation
+        kappa: 0.55       # Satellite cut-off factor (relative to M_cut)
+        alpha_c: 0.19     # Central velocity bias (fraction of halo velocity dispersion)
+        alpha_s: 0.95     # Satellite velocity bias (fraction of halo velocity dispersion)
+        s: 0              # Assembly bias on mass (centrals)
+        s_v: 0            # Assembly bias on velocity
+        s_p: 0            # Assembly bias on position
+        s_r: 0            # Assembly bias on radius
+        Acent: 0          # Concentration AB amplitude (centrals)
+        Asat: 0           # Concentration AB amplitude (satellites)
+        Bcent: 0          # Environment AB amplitude (centrals)
+        Bsat: 0           # Environment AB amplitude (satellites)
+        ic: 0.89          # Central galaxy incompleteness fraction
+
+    # --- ELG (Emission Line Galaxies) HOD parameters ---
+    ELG_params:
+        p_max: 0.1
+        Q: 10.
+        logM_cut: 11.7
+        kappa: 0.5
+        sigma: 1
+        logM1: 18
+        alpha: 1
+        gamma: 9
+        A_s: 1.
+        alpha_c: 0
+        alpha_s: 1
+        s: 0
+        s_v: 0
+        s_p: 0
+        s_r: 0
+        Acent: 0
+        Asat: 0
+        Bcent: 0
+        Bsat: 0
+        ic: 1.0
+
+    # --- QSO (Quasars) HOD parameters ---
+    QSO_params:
+        p_max: 0.33
+        logM_cut: 12.21
+        kappa: 1.0
+        sigma: 0.56
+        logM1: 13.94
+        alpha: 0.4
+        A_s: 1.
+        alpha_c: 0
+        alpha_s: 1
+        s: 0
+        s_v: 0
+        s_p: 0
+        s_r: 0
+        Acent: 0
+        Asat: 0
+        Bcent: 0
+        Bsat: 0
+        ic: 1.0
+
+
+# ===========================================================================
+# Clustering parameters (projected correlation function xi(rp, pi))
+# ===========================================================================
+clustering_params:
+    clustering_type: 'xirppi'   # Statistic type: 2D projected correlation function
+    bin_params:
+        logmin: -1    # log10 of minimum separation (Mpc/h)
+        logmax: 2.3   # log10 of maximum separation (Mpc/h)
+        nbins: 20     # Number of rp bins
+    pimax: 60         # Maximum line-of-sight separation (Mpc/h)
+    pi_bin_size: 10   # Line-of-sight bin size (Mpc/h)
+
+
+# ===========================================================================
+# Observational data (used for MCMC fitting, not for run_hod)
+# ===========================================================================
+data_params:
+    tracer_density_mean:
+        LRG: 5.7e-4   # Observed mean galaxy number density in (Mpc/h)^-3
+    tracer_density_std:
+        LRG: 4.0e-5   # Uncertainty on the number density in (Mpc/h)^-3
+    tracer_combos:
+        LRG_LRG:
+            path2power: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_target_standard.npz'
+            path2cov:   '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_cov_mock_div8.npz'
+
+
+# ===========================================================================
+# Free parameters for emcee MCMC fitting
+# Format: [mapping_index, initial_value, min, max, std, tracer]
+# ===========================================================================
+fit_params:
+    logM_cut: [0, 13.1, 12.5, 13.8, 0.03, 'LRG']
+    logM1:    [1, 14.5, 13.5, 15.5, 0.3,  'LRG']
+    sigma:    [2, 0.8,  0.1,  1.5,  0.3,  'LRG']
+    alpha:    [3, 1.0,  0.7,  1.5,  0.2,  'LRG']
+    kappa:    [4, 0.5,  0.0,  1.0,  0.25, 'LRG']
+
+
+# ===========================================================================
+# emcee (MCMC) configuration
+# ===========================================================================
+ch_config_params:
+    path2output:      chains/test
+    chainsPrefix:     test
+    use_mpi:          0
+    rerun:            0
+    walkersRatio:     4
+    burninIterations: 2000
+    sampleIterations: 40000
+
+
+# ===========================================================================
+# Dynesty (nested sampling) parameters
+# Format: [mapping_index, central_value, prior_sigma, tracer]
+# ===========================================================================
+dynesty_fit_params:
+    logM_cut: [0, 13.3, 0.2, 'LRG']
+    logM1:    [1, 14.3, 0.2, 'LRG']
+    sigma:    [2, 0.5,  0.2, 'LRG']
+
+dynesty_config_params:
+    path2output: dynesty/test
+    chainsPrefix: test
+    rerun:   0
+    nlive:   200
+    bound:   'multi'
+    method:  'unif'
+    maxcall: 10000
