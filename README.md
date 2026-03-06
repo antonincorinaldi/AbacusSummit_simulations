@@ -24,7 +24,7 @@ Three tracer types are supported: **LRG**, **ELG**, **QSO**.
 
 ## Configuration (`config/abacus_hod.yaml`)
 
-The key parameters to adapt are in the `sim_params` section:
+The parameters to adapt are in the `sim_params` section:
 
 | Parameter       | Description                                         |
 |-----------------|-----------------------------------------------------|
