@@ -24,7 +24,7 @@ Three tracer types are supported: **LRG**, **ELG**, **QSO**.
 
 ## Configuration (`config/abacus_hod.yaml`)
 
-The parameters to adapt are in the `sim_params` section:
+The key parameters to adapt are in the `sim_params` section:
 
 | Parameter       | Description                                         |
 |-----------------|-----------------------------------------------------|
@@ -51,9 +51,26 @@ Installation follows the AbacusHOD instructions:
 https://github.com/abacusorg/abacusutils
 
 
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `scripts/prepare_sim.py` | **Step 1 (required, once per snapshot)** — reads raw halo catalogs and writes particle subsample files to `subsample_dir` |
+| `scripts/generate_galaxy_mock.py` | **Step 2** — populates halos with the HOD model and writes the galaxy catalog to a FITS file |
+| `scripts/functions.py` | Shared utility functions (e.g. `save_mock_dict_to_fits`) |
+
 ## Usage
 
-From the project root:
+**1. Prepare the simulation** (run once per snapshot, before any mock generation):
+
+```bash
+python scripts/prepare_sim.py
+```
+
+This step reads halo catalogs from `sim_dir` and writes particle subsample
+files to `subsample_dir`. It is required before running the HOD.
+
+**2. Generate the galaxy catalog**:
 
 ```bash
 python scripts/generate_galaxy_mock.py
