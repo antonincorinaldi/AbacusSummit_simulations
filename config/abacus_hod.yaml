@@ -1,88 +1,76 @@
-# abacus_hod.yaml
-# ----------------
+# AbacusHOD configuration file
+# Comment out the probes you don't need.
+# IMPORTANT: YAML is whitespace-sensitive — use spaces, never tabs.
 
 
-# Sections:
-#   sim_params             -> simulation name, directories, redshift
-#   prepare_sim            -> halo loading options
-#   HOD_params             -> HOD model parameters per tracer (LRG, ELG, QSO)
-#   clustering_params      -> bins for the correlation function
-#   data_params            -> observational data paths (for MCMC fitting)
-#   fit_params             -> free parameters for emcee MCMC fitting
-#   ch_config_params       -> emcee configuration
-#   dynesty_fit_params     -> free parameters for dynesty nested sampling
-#   dynesty_config_params  -> dynesty configuration
-
-
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # Simulation parameters
-# ===========================================================================
+# ---------------------------------------------------------------------------
 sim_params:
-    sim_name: 'AbacusSummit_base_c000_ph000'   # Simulation box name
-    sim_dir: /n17data/corinaldi/halos/          # Directory containing halo catalogs (adapt to your system)
-    output_dir: '/n17data/corinaldi/halos/Abacus_HOD/'      # Output directory for mock catalogs
-    subsample_dir: '/n17data/corinaldi/halos/Abacus_HOD/'   # Output directory for particle subsamples
-    z_mock: 0.8                                 # Redshift of the simulated snapshot
-    cleaned_halos: False                        # Use cleaned halo catalogs?
+    sim_name: 'AbacusSummit_base_c000_ph000'   # AbacusSummit box identifier
+    #sim_name: 'halo_light_cones'
+    # sim_dir: '/mnt/gosling2/bigsims/'          # alternate simulation directory
+    sim_dir: /n17data/corinaldi/halos/           # root directory of the halo catalogs (.asdf)
+    output_dir: '/n17data/corinaldi/halos/Abacus_HOD/'       # output directory for galaxy mock catalogs
+    subsample_dir: '/n17data/corinaldi/halos/Abacus_HOD/'    # output directory for particle subsample files
+    z_mock: 1.1                                  # redshift of the target snapshot
+    cleaned_halos: False                         # whether to load merger-cleaned halos
 
-
-# ===========================================================================
-# Halo loading options
-# ===========================================================================
+# ---------------------------------------------------------------------------
+# Simulation preparation parameters (used by prepare_sim.py)
+# ---------------------------------------------------------------------------
 prepare_sim:
-    Nparallel_load: 1       # Number of parallel processes (peak memory scales with this)
-    Nthread_per_load: 1     # Number of threads per process
+    Nparallel_load: 1      # number of parallel load processes (peak memory scales with this)
+    Nthread_per_load: 1    # threads per load process (set to 'auto' to use the CPU affinity mask)
 
-
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # HOD parameters
-# ===========================================================================
+# ---------------------------------------------------------------------------
 HOD_params:
-    want_ranks: False           # Enable satellite profile flexibility (ranking)?
-    want_AB: True               # Enable assembly bias (AB)?
-    density_sigma: 3            # Local density smoothing scale in Mpc/h
-
-    tracer_flags:               # Which tracers to generate
+    want_ranks: False        # enable satellite profile flexibility via particle ranks?
+    want_AB: True            # enable assembly bias (AB) modulation?
+    # Ndim: 1024             # grid size for grid-based local environment (not used here)
+    density_sigma: 3         # smoothing scale [Mpc/h] for local density estimation
+    tracer_flags:            # select which galaxy tracers to populate
         LRG: True
-        ELG: False
+        ELG: True
         QSO: False
+    want_rsd: True           # apply redshift-space distortions (RSD)?
+    write_to_disk: False     # let AbacusHOD write its own output files?
 
-    want_rsd: True              # Apply Redshift Space Distortions (RSD)?
-    write_to_disk: False        # Let AbacusHOD write output internally? (handled manually here)
-
-    # --- LRG (Luminous Red Galaxies) HOD parameters ---
-    # Based on Zheng+2007 with assembly bias extensions
+    # HOD parameters for Luminous Red Galaxies (LRGs)
+    # Model: Zheng+2007 with assembly bias extensions
     LRG_params:
-        logM_cut: 12.78   # Log minimum halo mass for a central galaxy (M_sun/h)
-        logM1: 13.94      # Log characteristic mass for satellites
-        sigma: 0.23       # Width of the central occupation transition (in log M)
-        alpha: 1.07       # Power-law slope of the satellite mean occupation
-        kappa: 0.55       # Satellite cut-off factor (relative to M_cut)
-        alpha_c: 0.19     # Central velocity bias (fraction of halo velocity dispersion)
-        alpha_s: 0.95     # Satellite velocity bias (fraction of halo velocity dispersion)
-        s: 0              # Assembly bias on mass (centrals)
-        s_v: 0            # Assembly bias on velocity
-        s_p: 0            # Assembly bias on position
-        s_r: 0            # Assembly bias on radius
-        Acent: 0          # Concentration AB amplitude (centrals)
-        Asat: 0           # Concentration AB amplitude (satellites)
-        Bcent: 0          # Environment AB amplitude (centrals)
-        Bsat: 0           # Environment AB amplitude (satellites)
-        ic: 0.89          # Central galaxy incompleteness fraction
+        logM_cut: 12.89   # log10 of the minimum halo mass for central LRGs [M_sun/h]
+        logM1: 13.96      # log10 of the characteristic mass for satellite LRGs [M_sun/h]
+        sigma: 0.37       # scatter in the central occupation (width of the erf)
+        alpha: 0.91       # power-law slope of the satellite mean occupation
+        kappa: 0.74       # satellite activation threshold: M_sat = kappa * M_cut
+        alpha_c: 0.91     # central velocity bias parameter
+        alpha_s: 0.74     # satellite velocity bias parameter
+        s: 0              # satellite profile rank weight (requires want_ranks: True)
+        s_v: 0            # velocity-based rank weight
+        s_p: 0            # perihelion-based rank weight
+        s_r: 0            # radial-position-based rank weight
+        Acent: 0          # assembly bias amplitude for centrals (concentration)
+        Asat: 0           # assembly bias amplitude for satellites (concentration)
+        Bcent: 0          # assembly bias amplitude for centrals (local environment)
+        Bsat: 0           # assembly bias amplitude for satellites (local environment)
+        ic: 0.92          # incompleteness factor (fraction of eligible halos populated)
 
-    # --- ELG (Emission Line Galaxies) HOD parameters ---
+    # HOD parameters for Emission Line Galaxies (ELGs)
     ELG_params:
-        p_max: 0.1
-        Q: 10.
-        logM_cut: 11.7
-        kappa: 0.5
-        sigma: 1
-        logM1: 18
-        alpha: 1
-        gamma: 9
-        A_s: 1.
-        alpha_c: 0
-        alpha_s: 1
+        p_max: 1          # peak central occupation probability
+        Q: 10.            # sharpness of the high-mass suppression
+        logM_cut: 11.64   # log10 of the minimum halo mass for central ELGs [M_sun/h]
+        kappa: 0.35       # satellite activation threshold
+        sigma: 0.39       # scatter in the central occupation
+        logM1: 13.0       # log10 of the characteristic satellite mass [M_sun/h]
+        alpha: 0.91       # satellite power-law slope
+        gamma: 4.50       # high-mass suppression slope
+        A_s: 0.31         # satellite amplitude modulation
+        alpha_c: 0        # central velocity bias
+        alpha_s: 1.34     # satellite velocity bias
         s: 0
         s_v: 0
         s_p: 0
@@ -91,19 +79,19 @@ HOD_params:
         Asat: 0
         Bcent: 0
         Bsat: 0
-        ic: 1.0
+        ic: 1.0           # no incompleteness applied to ELGs
 
-    # --- QSO (Quasars) HOD parameters ---
+    # HOD parameters for Quasi-Stellar Objects (QSOs)
     QSO_params:
-        p_max: 0.33
-        logM_cut: 12.21
-        kappa: 1.0
-        sigma: 0.56
-        logM1: 13.94
-        alpha: 0.4
-        A_s: 1.
-        alpha_c: 0
-        alpha_s: 1
+        p_max: 0.33       # peak central occupation probability
+        logM_cut: 12.21   # log10 of the minimum halo mass for central QSOs [M_sun/h]
+        kappa: 1.0        # satellite activation threshold
+        sigma: 0.56       # scatter in the central occupation
+        logM1: 13.94      # log10 of the characteristic satellite mass [M_sun/h]
+        alpha: 0.4        # satellite power-law slope
+        A_s: 1.           # satellite amplitude modulation
+        alpha_c: 0        # central velocity bias
+        alpha_s: 1        # satellite velocity bias
         s: 0
         s_v: 0
         s_p: 0
@@ -114,73 +102,75 @@ HOD_params:
         Bsat: 0
         ic: 1.0
 
-
-# ===========================================================================
-# Clustering parameters (projected correlation function xi(rp, pi))
-# ===========================================================================
+# ---------------------------------------------------------------------------
+# Clustering measurement parameters
+# ---------------------------------------------------------------------------
 clustering_params:
-    clustering_type: 'xirppi'   # Statistic type: 2D projected correlation function
+    #power_type: 'wp'
+    clustering_type: 'xirppi'   # projected correlation function xi(rp, pi)
     bin_params:
-        logmin: -1    # log10 of minimum separation (Mpc/h)
-        logmax: 2.3   # log10 of maximum separation (Mpc/h)
-        nbins: 20     # Number of rp bins
-    pimax: 60         # Maximum line-of-sight separation (Mpc/h)
-    pi_bin_size: 10   # Line-of-sight bin size (Mpc/h)
+        logmin: -1    # log10 of the minimum r_perp bin edge [Mpc/h]
+        logmax: 2.3   # log10 of the maximum r_perp bin edge [Mpc/h]
+        nbins: 20     # number of logarithmic r_perp bins
+    pimax: 60         # maximum line-of-sight separation [Mpc/h]
+    pi_bin_size: 10   # width of each pi bin [Mpc/h]
 
 
 # ===========================================================================
-# Observational data (used for MCMC fitting, not for run_hod)
+# The sections below are only required when using the provided
+# emcee / dynesty likelihood templates. They are NOT needed for running
+# AbacusHOD directly.
 # ===========================================================================
+
+# Paths and target statistics for the observed data to be fitted
 data_params:
     tracer_density_mean:
-        LRG: 5.7e-4   # Observed mean galaxy number density in (Mpc/h)^-3
+        LRG: 5.7e-4   # target LRG number density [(Mpc/h)^-3]
     tracer_density_std:
-        LRG: 4.0e-5   # Uncertainty on the number density in (Mpc/h)^-3
+        LRG: 4.0e-5   # 1-sigma uncertainty on the LRG number density [(Mpc/h)^-3]
     tracer_combos:
         LRG_LRG:
             path2power: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_target_standard.npz'
-            path2cov:   '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_cov_mock_div8.npz'
+            path2cov: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_cov_mock_div8.npz'
+#       LRG_ELG:
+#            path2power: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_target_standard.npz'
+#            path2cov: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_cov_mock_div8.npz'
+#        ELG_ELG:
+#            path2power: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_target_standard.npz'
+#            path2cov: '/mnt/marvin1/syuan/scratch/targets_xi/data_xi_cov_mock_div8.npz'
 
-
-# ===========================================================================
-# Free parameters for emcee MCMC fitting
-# Format: [mapping_index, initial_value, min, max, std, tracer]
-# ===========================================================================
+# Parameters to be fitted in MCMC
+# Format: [mapping_index, prior_mean, prior_min, prior_max, proposal_std, tracer_type]
 fit_params:
     logM_cut: [0, 13.1, 12.5, 13.8, 0.03, 'LRG']
-    logM1:    [1, 14.5, 13.5, 15.5, 0.3,  'LRG']
-    sigma:    [2, 0.8,  0.1,  1.5,  0.3,  'LRG']
-    alpha:    [3, 1.0,  0.7,  1.5,  0.2,  'LRG']
-    kappa:    [4, 0.5,  0.0,  1.0,  0.25, 'LRG']
+    logM1: [1, 14.5, 13.5, 15.5, 0.3, 'LRG']
+    sigma: [2, 0.8, 0.1, 1.5, 0.3, 'LRG']
+    alpha: [3, 1.0, 0.7, 1.5, 0.2, 'LRG']
+    kappa: [4, 0.5, 0.0, 1.0, 0.25, 'LRG']
 
-
-# ===========================================================================
-# emcee (MCMC) configuration
-# ===========================================================================
+# Configuration for the emcee sampler
 ch_config_params:
-    path2output:      chains/test
-    chainsPrefix:     test
-    use_mpi:          0
-    rerun:            0
-    walkersRatio:     4
+    path2output: chains/test
+    chainsPrefix: test
+    use_mpi: 0             # use MPI for parallelisation?
+    rerun: 0               # start from scratch (0) or resume existing chains (1)?
+    walkersRatio: 4        # number of walkers = walkersRatio * number of free parameters
     burninIterations: 2000
     sampleIterations: 40000
 
-
-# ===========================================================================
-# Dynesty (nested sampling) parameters
-# Format: [mapping_index, central_value, prior_sigma, tracer]
-# ===========================================================================
+# Parameters to be fitted with dynesty (nested sampling)
+# Format: [mapping_index, prior_mean, prior_std, tracer_type]
 dynesty_fit_params:
     logM_cut: [0, 13.3, 0.2, 'LRG']
-    logM1:    [1, 14.3, 0.2, 'LRG']
-    sigma:    [2, 0.5,  0.2, 'LRG']
+    logM1: [1, 14.3, 0.2, 'LRG']
+    sigma: [2, 0.5, 0.2, 'LRG']
 
+# Configuration for the dynesty nested sampler
 dynesty_config_params:
     path2output: dynesty/test
     chainsPrefix: test
-    rerun:   0
-    nlive:   200
-    bound:   'multi'
-    method:  'unif'
-    maxcall: 10000
+    rerun: 0         # start from scratch (0) or resume (1)?
+    nlive: 200       # number of live points
+    bound: 'multi'   # bounding method for the prior volume
+    method: 'unif'   # sampling method within the bound
+    maxcall: 10000   # maximum number of likelihood evaluations
