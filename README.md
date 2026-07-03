@@ -72,6 +72,7 @@ https://github.com/cosmodesi/pycorr
 | `functions/functions.py` | Shared utility functions used by Step 3: 3D axis-ratio sampling (`population_3D`), ellipsoid projection (`projection`), and the top-level wrapper (`simulator`) |
 | `scripts/clustering/run_wgg_box.py` | **Step 4 (mock)** — computes the projected correlation function wp(rp) for the mock galaxy catalogue in the periodic simulation box |
 | `scripts/clustering/run_wgg_data.py` | **Step 4 (data)** — computes wp(rp) with jackknife error bars for a real DESI galaxy sample (data + randoms) |
+| `notebooks/clustering.ipynb` | **Step 5** — plots wp(rp) for the LRG and ELG tracers, comparing DESI data against the AbacusHOD mock, using the `.npz` outputs of Step 4 |
 
 
 ## Usage
@@ -132,3 +133,21 @@ Results are saved as `.npz` files containing `rp`, `wgg` (and `err_jk` /
 Paths to the input catalogues and output directories in these two scripts
 are currently hardcoded (e.g. `/n17data/corinaldi/...`) — update them to
 match your own environment before running.
+
+**Step 5 — Visualize the clustering results**:
+
+```bash
+jupyter notebook notebooks/clustering.ipynb
+```
+
+Loads the `.npz` files produced in Step 4 and plots `rp * wp(rp)` for
+data vs. mock:
+
+- LRG tracer, comparing three DESI redshift bins (`0.4 < z < 0.6`,
+  `0.6 < z < 0.8`, `0.8 < z < 1.1`) against the matching AbacusHOD mock
+  snapshots.
+- ELG tracer, comparing the `0.8 < z < 1.6` DESI bin against the mock at
+  `z = 1.1`.
+
+As with the clustering scripts, the input file paths are hardcoded and
+should be adapted to your environment.
