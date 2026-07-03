@@ -49,10 +49,17 @@ treecorr       # Two-point correlation functions (used in functions.py)
 IACorr         # Intrinsic-alignment correlation utilities (used in functions.py)
 scipy          # Statistical distributions (used in functions.py)
 pandas         # Data table utilities (used in functions.py)
+pycorr         # Two-point correlation function estimator (used in scripts/clustering)
+tqdm           # Progress bars
+torch          # Used by some HOD/clustering scripts
 ```
 
 Installation follows the AbacusHOD instructions:
 https://github.com/abacusorg/abacusutils
+
+`pycorr` (two-point correlation function estimator used in
+`scripts/clustering`) is available at:
+https://github.com/cosmodesi/pycorr
 
 
 ## Scripts
@@ -63,6 +70,8 @@ https://github.com/abacusorg/abacusutils
 | `scripts/generate_galaxy_mock.py` | **Step 2** — populates halos with the HOD model and writes a multi-extension FITS catalog (one extension per tracer: LRG, ELG) |
 | `scripts/generate_halo_catalogue.py` | **Step 3** — matches halos to mock galaxies by ID, computes ellipticity components (e1, e2), and writes the enriched halo catalog to a FITS file |
 | `functions/functions.py` | Shared utility functions used by Step 3: 3D axis-ratio sampling (`population_3D`), ellipsoid projection (`projection`), and the top-level wrapper (`simulator`) |
+| `scripts/clustering/run_wgg_box.py` | **Step 4 (mock)** — computes the projected correlation function wp(rp) for the mock galaxy catalogue in the periodic simulation box |
+| `scripts/clustering/run_wgg_data.py` | **Step 4 (data)** — computes wp(rp) with jackknife error bars for a real DESI galaxy sample (data + randoms) |
 
 
 ## Usage
@@ -99,3 +108,27 @@ Reads the galaxy mock produced in Step 2, matches the corresponding halos
 from the AbacusSummit catalog, computes halo ellipticity components (e1, e2)
 from the shape-tensor eigenvectors, and writes the result to:
 `halo_catalogue_<tracer>_z<redshift>.fits`
+
+**Step 4 — Galaxy clustering (wp(rp))**:
+
+```bash
+python scripts/clustering/run_wgg_box.py    # mock catalogue, periodic box
+python scripts/clustering/run_wgg_data.py   # real DESI data + randoms, with jackknife errors
+```
+
+Both scripts use `pycorr` to measure the projected two-point correlation
+function wp(rp) in `rp`/`pi` bins:
+
+- `run_wgg_box.py` measures wp(rp) directly on the mock galaxy catalogue
+  (Step 2 output) inside the periodic simulation box, so no random
+  catalogue is required.
+- `run_wgg_data.py` measures wp(rp) on a real DESI data + randoms sample,
+  converting (RA, DEC, Z) to comoving Cartesian coordinates, and estimates
+  error bars via angular jackknife regions built with K-Means.
+
+Results are saved as `.npz` files containing `rp`, `wgg` (and `err_jk` /
+`cov_jk` for the data case).
+
+Paths to the input catalogues and output directories in these two scripts
+are currently hardcoded (e.g. `/n17data/corinaldi/...`) — update them to
+match your own environment before running.
