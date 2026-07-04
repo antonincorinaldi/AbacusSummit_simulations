@@ -1,29 +1,3 @@
-"""
-generate_halo_catalogue.py
---------------------------
-Builds a halo catalogue matched to a mock galaxy catalogue output by
-generate_galaxy_mock.py, then computes halo ellipticities and writes the
-result to a FITS file for downstream analysis.
-
-Pipeline overview:
-    [1] prepare_sim.py            <- particle subsample preparation (run first)
-    [2] generate_galaxy_mock.py   <- HOD galaxy catalog generation
-    [3] generate_halo_catalogue.py <- THIS SCRIPT (run after step 2)
-
-Steps performed here:
-    1. Load the mock galaxy catalogue produced in step 2.
-    2. Load the full AbacusSummit CompaSOHaloCatalog at the same redshift.
-    3. Match halos to mock galaxies by halo ID.
-    4. Compute ellipticity components (e1, e2) for the matched halos.
-    5. Write the enriched halo catalogue to a FITS file.
-
-Usage:
-    From the project root:
-        python scripts/generate_halo_catalogue.py
-
-    Update the hard-coded file paths if the directory layout changes.
-"""
-
 from abacusnbody.hod import prepare_sim
 from astropy.io import fits
 from astropy.table import Table
@@ -38,84 +12,73 @@ from abacusnbody.hod.abacus_hod import AbacusHOD
 
 import sys
 import os
-
-# Add the local functions/ directory (at the project root) to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
+# Hardcoded path to the functions/ directory; update if the directory layout changes
+sys.path.append(os.path.abspath("/n17data/corinaldi/halos/Abacus_HOD/abacusutils/functions"))
 from functions import *
 
 
-# Redshift of the snapshot to process
-z_snapshot = 0.5
 
-# Galaxy tracer type to extract from the mock catalogue
+
+z_snapshot= 0.2
 tracer = 'LRG'
 
 
 # -----------------------------------------------------------------------
-# 1. Load mock galaxy catalogue and extract halo IDs
+# 1. Build associated halo catalog for LRG galaxies
 # -----------------------------------------------------------------------
-# Open the FITS file produced by generate_galaxy_mock.py and read the
-# extension corresponding to the chosen tracer (LRG or ELG).
+# Open the mock galaxy catalogue (from generate_galaxy_mock.py) and read the
+# extension corresponding to the chosen tracer
 with fits.open(f"/n17data/corinaldi/mock_galaxy_catalogues/mock_galaxy_catalogue_LRG+ELG_z{z_snapshot}.fits") as hdul:
     mock = hdul[tracer].data
 
 mock = Table(mock)
-
-# Add a uniform weight column (all galaxies weighted equally)
 mock['WEIGHT_TOT'] = np.ones(len(mock))
 
-# Extract the halo IDs associated with mock galaxies
+# Halo IDs associated with the mock galaxies
 halos_ids_mock = np.asarray(mock['id'])
 
-
-# -----------------------------------------------------------------------
-# 2. Load the full AbacusSummit halo catalogue at the target redshift
-# -----------------------------------------------------------------------
-# Only the fields needed for position, shape, particle count, and ID are
-# requested to limit memory usage.
 cat = CompaSOHaloCatalog(
     f'/n17data/corinaldi/halos/AbacusSummit_base_c000_ph000/halos/z{z_snapshot}',
     fields=[
-        'x_L2com',              # L2-center-of-mass position [Mpc/h]
-        'sigman_L2com',         # velocity dispersion tensor (scalar, L2com frame)
-        'sigman_eigenvecsMin_L2com',  # eigenvector along minor axis
-        'sigman_eigenvecsMid_L2com',  # eigenvector along intermediate axis
-        'sigman_eigenvecsMaj_L2com',  # eigenvector along major axis
-        'N',                    # number of particles in the halo
-        'id',                   # unique halo identifier
+        'x_L2com',
+        'sigman_L2com',
+        'sigman_eigenvecsMin_L2com',
+        'sigman_eigenvecsMid_L2com',
+        'sigman_eigenvecsMaj_L2com',
+        'N',
+        'id',
     ],
     cleaned=False,
 )
 
-
-# -----------------------------------------------------------------------
-# 3. Match halos to mock galaxies by halo ID
-# -----------------------------------------------------------------------
-# Cast mock halo IDs to the same dtype as the catalogue IDs before masking
+# Match halos to mock galaxies by ID
 halos_ids_mock = halos_ids_mock.astype(cat.halos['id'].dtype)
-
-# Boolean mask: True for halos whose ID appears in the mock galaxy list
 mask = np.isin(cat.halos['id'], halos_ids_mock)
-
-# Retain only the matched halos and clear simulation metadata from the header
 halos = Table(cat.halos[mask])
 halos.meta.clear()
 
 
-# -----------------------------------------------------------------------
-# 4. Compute halo ellipticities
-# -----------------------------------------------------------------------
-# Extract Cartesian position components for convenience
+# Selecting only 2_000_000 halos
+# Cap the sample size for memory/runtime reasons: subsample randomly without
+# replacement if there are more matched halos than nb_halos_max
+nb_halos_max = 2_000_000
+if len(halos) > nb_halos_max:
+    rng_idx = np.random.choice(len(halos), size=nb_halos_max, replace=False)
+    halos = halos[rng_idx]
+
+
+
 x = halos['x_L2com'][:, 0]
 y = halos['x_L2com'][:, 1]
 z = halos['x_L2com'][:, 2]
 
-# Compute ellipticity components (e1, e2) using the shape tensor eigenvectors.
-# The first argument is a weight vector; here all components are set to 1
-# (isotropic weighting). `el` is the halo table; `nb_halos` sets the sample size.
-e1_halos, e2_halos = simulator([1, 1, 1, 0, 0, 0, 0], el=halos, nb_halos=len(halos))
 
-# Add derived columns to the halo table
+
+# Compute ellipticity components (e1, e2) with no scatter on the axis ratios
+# (theta = [mu_tau_B, mu_tau_C, sigma_tau_B, sigma_tau_C] = [1, 1, 0, 0]),
+# i.e. galaxy shapes are set equal to their host halo's shape
+e1_halos, e2_halos = simulator([1, 1, 0, 0], el=halos, nb_halos=len(halos))
+
 halos['x'] = x                        # RA-like coordinate [Mpc/h]
 halos['y'] = y                        # Dec-like coordinate [Mpc/h]
 halos['z'] = z                        # line-of-sight coordinate [Mpc/h]
@@ -124,11 +87,16 @@ halos['e2'] = e2_halos                # second ellipticity component
 halos['weights'] = np.ones(len(halos))  # uniform halo weights
 
 
-# -----------------------------------------------------------------------
-# 5. Write the matched halo catalogue to disk
-# -----------------------------------------------------------------------
-halos.write(
-    f'/n17data/corinaldi/halos/Abacus_HOD_halos/halo_catalogue_{tracer}_z{z_snapshot}.fits',
-    format='fits',
-    overwrite=True,
-)
+
+# Write the enriched halo catalogue to disk
+halos.write(f'/n17data/corinaldi/halos/Abacus_HOD_halos/halo_catalogue_{tracer}_z{z_snapshot}.fits', format='fits', overwrite=True)
+
+
+
+
+
+
+
+
+
+

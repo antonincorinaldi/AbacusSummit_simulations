@@ -46,7 +46,6 @@ astropy        # FITS I/O and table handling
 numpy          # Numerical computing
 pyyaml         # YAML configuration file parsing
 treecorr       # Two-point correlation functions (used in functions.py)
-IACorr         # Intrinsic-alignment correlation utilities (used in functions.py)
 scipy          # Statistical distributions (used in functions.py)
 pandas         # Data table utilities (used in functions.py)
 pycorr         # Two-point correlation function estimator (used in scripts/clustering)
@@ -69,7 +68,7 @@ https://github.com/cosmodesi/pycorr
 | `scripts/prepare_sim.py` | **Step 1 (required, once per snapshot)** — reads raw halo catalogs and writes particle subsample files to `subsample_dir` |
 | `scripts/generate_galaxy_mock.py` | **Step 2** — populates halos with the HOD model and writes a multi-extension FITS catalog (one extension per tracer: LRG, ELG) |
 | `scripts/generate_halo_catalogue.py` | **Step 3** — matches halos to mock galaxies by ID, computes ellipticity components (e1, e2), and writes the enriched halo catalog to a FITS file |
-| `functions/functions.py` | Shared utility functions used by Step 3: 3D axis-ratio sampling (`population_3D`), ellipsoid projection (`projection`), and the top-level wrapper (`simulator`) |
+| `functions/functions.py` | Shared utility functions used by Step 3: 3D axis-ratio sampling (`population_3D`), ellipsoid projection (`projection`), and the top-level wrapper (`simulator`). `simulator` takes `theta = [mu_tau_B, mu_tau_C, sigma_tau_B, sigma_tau_C]`: galaxy B/C semi-axes are drawn from an independent bivariate normal and rescale the halo's B/C axes, while the major axis (A) is kept equal to the halo's major axis |
 | `scripts/clustering/run_wgg_box.py` | **Step 4 (mock)** — computes the projected correlation function wp(rp) for the mock galaxy catalogue in the periodic simulation box |
 | `scripts/clustering/run_wgg_data.py` | **Step 4 (data)** — computes wp(rp) with jackknife error bars for a real DESI galaxy sample (data + randoms) |
 | `notebooks/clustering.ipynb` | **Step 5** — plots wp(rp) for the LRG and ELG tracers, comparing DESI data against the AbacusHOD mock, using the `.npz` outputs of Step 4 |
@@ -109,6 +108,15 @@ Reads the galaxy mock produced in Step 2, matches the corresponding halos
 from the AbacusSummit catalog, computes halo ellipticity components (e1, e2)
 from the shape-tensor eigenvectors, and writes the result to:
 `halo_catalogue_<tracer>_z<redshift>.fits`
+
+By default `simulator` is called with `theta = [1, 1, 0, 0]` (no scatter),
+so galaxy shapes are set equal to their host halo's shape. If the number of
+matched halos exceeds `nb_halos_max` (2,000,000), the script randomly
+subsamples down to that limit before computing ellipticities.
+
+As with the clustering scripts, the input/output file paths and the path to
+`functions/functions.py` are hardcoded and should be adapted to your
+environment.
 
 **Step 4 — Galaxy clustering (wp(rp))**:
 
