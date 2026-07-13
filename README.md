@@ -37,6 +37,8 @@ The key parameters to adapt are in the `sim_params` section:
 LRG HOD parameters are found under `HOD_params.LRG_params`.
 To enable ELG or QSO tracers, set `tracer_flags.ELG: True` (etc.).
 
+See Yuan et al. 2023 for best-fit HOD parameters for LRGs.
+
 
 ## Dependencies
 
